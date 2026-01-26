@@ -1,0 +1,80 @@
+# Node.js (React)
+node_modules/
+build/
+dist/
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/
+.DS_Store
+.idea/
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# .NET (API)
+bin/
+obj/
+*.user
+*.lock.json
+*.suo
+*.pdb
+*.cache
+*.log
+*.dbmdl
+*.jfm
+*.sqlproj.user
+*.sln.docstates
+appsettings*.json
+.env
+secrets.json
+.vscode/
+.vs/
+local.settings.json
+Properties/launchSettings.json
+
+# Visual Studio Code
+.vscode/
+
+# Logs
+logs/
+*.log
+!src/**/*.log
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+
+# Build output
+*.exe
+*.dll
+*.out
+*.app
+*.lib
+*.so
+*.a
+*.dylib
+*.iobj
+*.idb
+*.pch
+*.pdb
+*.rsp
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*.log
+*.csproj.user

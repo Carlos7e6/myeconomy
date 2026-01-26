@@ -1,0 +1,104 @@
+.FixedCost{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* justify-content: center; */
+    width: 100%;
+    padding: 1em;
+
+}
+
+
+/* Estilos generales */
+table {
+    width: 90%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #444;
+  }
+  
+  th {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #444;
+  }
+  
+  tr:nth-child(odd) {
+    background-color: #333;
+  }
+  
+  tr:hover {
+    background-color: #555;
+  }
+  
+  input, select {
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #555;
+    color: #fff;
+  }
+  
+  button {
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #45a049;
+  }
+  
+  /* Responsividad */
+  @media (max-width: 768px) {
+    table {
+      display: block;
+      overflow-x: none;
+      white-space: nowrap;
+    }
+  
+    thead {
+      display: none; /* Ocultar encabezados en pantallas pequeñas */
+    }
+  
+    tr {
+      display: block;
+      margin-bottom: 20px;
+      border: 1px solid #444;
+      border-radius: 5px;
+    }
+  
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #444;
+    }
+  
+    td:last-child {
+      border-bottom: none;
+    }
+  
+    td::before {
+      content: attr(data-label); /* Usar atributos data-label para mostrar encabezados */
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #4CAF50;
+    }
+  }
+  
