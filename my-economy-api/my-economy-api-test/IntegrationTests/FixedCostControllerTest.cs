@@ -7,6 +7,7 @@ using my_economy_api.Models;
 using NSubstitute; // For mocking dependencies in tests, mocking is essential to isolate the unit of work being tested and to control the behavior of dependencies, ensuring that tests are reliable and focused on the specific functionality being evaluated.
 using RepositoryPatern.Interfaces;
 using System.Net;
+using System.Net.Http.Json;
 using Xunit;
 
 namespace my_economy_api_test.IntegrationTests
@@ -14,6 +15,12 @@ namespace my_economy_api_test.IntegrationTests
     public class FixedCostControllerTest : IClassFixture<WebApplicationFactory<Program>> //The IClassFixture<T> interface is used in xUnit to indicate that a test class requires a shared context or fixture. In this case, it indicates that the FixedCostControllertTest class will use a WebApplicationFactory<Program> as its fixture, allowing it to set up and tear down the test environment for each test method in the class.
     {
         private readonly WebApplicationFactory<Program> _factory; //The WebApplicationFactory is a test fixture provided by the Microsoft.AspNetCore.Mvc.Testing package that allows you to create an in-memory test server for your ASP.NET Core application. It is used to set up the testing environment and create HTTP clients for making requests to the API during tests.
+
+        public static IEnumerable<object[]> GetMandatoryParameterNull()
+        {
+            yield return new object[] { new FixedCost { Name = "", Amount = 50, Description = "Sin nombre" }, "Name is empty" };
+            yield return new object[] { new FixedCost { Name = null!, Amount = 10, Description = "Nulo" }, "Name is null" };
+        }
 
         public FixedCostControllerTest(WebApplicationFactory<Program> factory)
         {
@@ -33,6 +40,23 @@ namespace my_economy_api_test.IntegrationTests
             var response = await client.GetAsync("/FixedCost");
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
+        }
+
+        [Theory]
+        [MemberData(nameof(GetMandatoryParameterNull))]
+        public async Task PostFixedCost_ReturnsBadRequest_WhenMandatoryParameterIsMissing(FixedCost invalidCost, string reason)
+        {
+            var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
+            
+            var client = _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
+            }).CreateClient();
+
+            // Act
+            var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}");
         }
     }
 }

@@ -9,10 +9,10 @@ namespace my_economy_api.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class FixedCostsController : ControllerBase
+    public class FixedCostController : ControllerBase
     {
         private readonly IRepository<FixedCost> _fixedCostRepository;
-        public FixedCostsController(IRepository<FixedCost> fixedCostRepository)
+        public FixedCostController(IRepository<FixedCost> fixedCostRepository)
         {
             _fixedCostRepository = fixedCostRepository;
         }
@@ -26,6 +26,13 @@ namespace my_economy_api.Controllers
                 return NotFound(); 
 
             return Ok(fixedCost);
+        }
+
+        [HttpPost]
+        public IActionResult Post(FixedCost entity)
+        {
+            _fixedCostRepository.AddAsync(entity);
+            return CreatedAtAction(nameof(Post), new { id = entity.Id }, entity);
         }
 
         //[HttpPost]
