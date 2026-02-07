@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\my-economy-api\my-economy-api.csproj" />
+    <ProjectReference Include="..\RepositoryPatern\RepositoryPatern.csproj" />
   </ItemGroup>
 
   <ItemGroup>

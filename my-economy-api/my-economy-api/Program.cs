@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using my_economy_api.Data;
 using RepositoryPatern.Interfaces;
-using RepositoryPatern.Repositories;
+using RepositoryPatern;
 
 var builder = WebApplication.CreateBuilder(args);
 
