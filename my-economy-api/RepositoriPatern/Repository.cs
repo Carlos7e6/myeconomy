@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RepositoriPatern.Interfaces;
+using RepositoryPatern.Interfaces;
 
-namespace RepositoriPatern.Repositories;
+namespace RepositoryPatern.Repositories;
 
 public class Repository<T> : IRepository<T> where T : class
 {

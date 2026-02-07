@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using my_economy_api.Models;
-using RepositoriPatern;
-using RepositoriPatern.Interfaces;
-using RepositoriPatern.Repositories;
+using RepositoryPatern;
+using RepositoryPatern.Interfaces;
+using RepositoryPatern.Repositories;
 
 namespace my_economy_api.Controllers
 {

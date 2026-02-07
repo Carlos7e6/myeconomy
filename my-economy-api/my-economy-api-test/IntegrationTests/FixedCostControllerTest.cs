@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestPlatform.TestHost;
 using my_economy_api;
 using my_economy_api.Models;
 using NSubstitute; // For mocking dependencies in tests, mocking is essential to isolate the unit of work being tested and to control the behavior of dependencies, ensuring that tests are reliable and focused on the specific functionality being evaluated.
-using RepositoriPatern.Interfaces;
+using RepositoryPatern.Interfaces;
 using System.Net;
 using Xunit;
 
