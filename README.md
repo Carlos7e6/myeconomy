@@ -43,20 +43,5 @@ Clean Code: Singular for entities, plural for tables, and meaningful naming conv
 
 Modularization: Business logic and data access live in their own DLLs, ready to be reused in any project.
 
-🚦 Getting Started
-Clone the vibes: git clone ...
-
-Spin up the backend: ```bash cd my-economy-api dotnet restore dotnet run
-
-Run the tests (The fun part):
-
-Bash
-dotnet watch test --project my-economy-api-test
-Ignite the frontend:
-
-Bash
-cd my-economy-frontend
-npm install
-npm start
 📣 Final Thought
 "The best way to predict the future is to track your expenses and write unit tests for your budget." — Me, probably.
