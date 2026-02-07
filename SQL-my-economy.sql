@@ -1,6 +1,6 @@
---DROP TABLE FixedCosts
---DROP TABLE Transactions
---DROP TABLE BudgetCategories
+DROP TABLE FixedCosts
+DROP TABLE Transactions
+DROP TABLE BudgetCategories
 
 CREATE TABLE BudgetCategories(
 ID int IDENTITY(1,1) PRIMARY KEY,
@@ -11,7 +11,7 @@ Active bit DEFAULT 1
 
 CREATE TABLE Transactions (
     ID int IDENTITY(1,1) PRIMARY KEY,
-    Amount numeric(12, 2) NOT NULL,         
+    Amount numeric(18, 2) NOT NULL,         
     TransactionDate date NOT NULL,         
     Description varchar(255),              
     CategoryID int NULL,                 
@@ -23,9 +23,13 @@ CREATE TABLE Transactions (
 
 CREATE TABLE FixedCosts(
     ID int IDENTITY(1,1) PRIMARY KEY,
-    Expense varchar(50) NOT NULL,
-    Frequency int NOT NULL,
-    CategoryID int,             
+    Name varchar(50) NOT NULL,  
+    Description varchar(255) NULL,
+    Amount numeric(18, 2) NOT NULL, 
+    Frequency int NOT NULL, -- DAYS
+    CategoryID int,
+    AproxDatePayment datetime NOT NULL,
+    CreatedAt datetime DEFAULT GETDATE(),    
     FOREIGN KEY (CategoryID) REFERENCES BudgetCategories(ID)
 );
 
