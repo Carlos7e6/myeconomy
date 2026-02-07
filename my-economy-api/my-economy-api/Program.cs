@@ -1,20 +1,25 @@
 using Microsoft.EntityFrameworkCore;
 using my_economy_api.Data;
-using my_economy_api.Services;
+using RepositoriPatern.Interfaces;
+using RepositoriPatern.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Register the DbContext with the dependency injection container, configuring it to use SQL Server with the connection string specified in the application's configuration settings.
+// This allows the application to interact with the database using Entity Framework Core for data access operations.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddScoped<DbProvider>();
+// Register the DbContext as a scoped service in the dependency injection container, allowing it to be injected into other services and controllers that require database access.
+builder.Services.AddScoped<DbContext>(provider =>
+    provider.GetRequiredService<ApplicationDbContext>());
+
+// Register the generic repository interface and its implementation in the dependency injection container, allowing for the use of the repository pattern throughout the application for data access operations.
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>)); 
 
 builder.Services.AddCors(options =>
 {
@@ -46,3 +51,5 @@ app.UseAuthorization();
 app.MapControllers();      
 
 app.Run();
+
+public partial class Program { }
