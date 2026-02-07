@@ -19,11 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RepositoriPatern\RepositoryPatern.csproj" />
-    <ProjectReference Include="..\RepositoryPatern\RepositoryPatern.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="Services\" />
   </ItemGroup>
 
