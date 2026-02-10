@@ -40,7 +40,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment()) //To avoid the warnings in tests
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRouting();     
 

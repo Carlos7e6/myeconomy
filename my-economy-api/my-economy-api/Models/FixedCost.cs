@@ -8,11 +8,14 @@ namespace my_economy_api.Models
     {
         [Key]
         public int Id { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "CategoryID must be greater than 0")]
         public int CategoryID { get; set; }
 
         [MaxLength(50)]
         [Required(ErrorMessage = "Name is mandatory")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
+
         [MaxLength(255)]
         public string? Description { get; set; }
 
