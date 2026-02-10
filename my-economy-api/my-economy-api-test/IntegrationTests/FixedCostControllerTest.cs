@@ -16,29 +16,87 @@ namespace my_economy_api_test.IntegrationTests
     {
         private readonly WebApplicationFactory<Program> _factory; //The WebApplicationFactory is a test fixture provided by the Microsoft.AspNetCore.Mvc.Testing package that allows you to create an in-memory test server for your ASP.NET Core application. It is used to set up the testing environment and create HTTP clients for making requests to the API during tests.
 
+        private static FixedCost CreateValidFixedCost()
+        {
+            return new FixedCost
+            {
+                Id = 0,
+                Name = "Gasto Válido",
+                Amount = 100.0f,
+                Frequency = 30,
+                CategoryID = 1,
+                Description = "Descripción estándar"
+            };
+        }
+
         public static IEnumerable<object[]> GetMandatoryParameterNull()
         {
-            yield return new object[] { new FixedCost { Name = "", Amount = 50, Description = "Sin nombre" }, "Name is empty" };
-            yield return new object[] { new FixedCost { Name = null!, Amount = 10, Description = "Nulo" }, "Name is null" };
-            yield return new object[] { new FixedCost { Name = "Switch2", Amount = 10, Description = "Nulo", CategoryID = 0 }, "CategoryID is 0" };
+            var cost1 = CreateValidFixedCost();
+            cost1.Name = "";
+            yield return new object[] { cost1, "Name is empty" };
+
+            var cost2 = CreateValidFixedCost();
+            cost2.Name = null!;
+            yield return new object[] { cost2, "Name is null" };
+
+            var cost3 = CreateValidFixedCost();
+            cost3.CategoryID = 0;
+            yield return new object[] { cost3, "CategoryID is 0" };
         }
 
         public static IEnumerable<object[]> GetAmountBelowZero()
         {
-            yield return new object[] { new FixedCost { Name = "", Amount = -5, Description = "Amount negative" }, "Amount is negative" };
-            yield return new object[] { new FixedCost { Name = null!, Amount = 0, Description = "Amount 0" }, "Amount is 0" };
+            var cost1 = CreateValidFixedCost();
+            cost1.Amount = -5;
+            yield return new object[] { cost1, "Amount is negative" };
+
+            var cost2 = CreateValidFixedCost();
+            cost2.Amount = 0;
+            yield return new object[] { cost1, "Amount is 0" };
         }
 
         public static IEnumerable<object[]> GetFrecuencyBelowZero()
         {
-            yield return new object[] { new FixedCost { Name = "", Frequency = -5, Description = "Frequency negative" }, "Frequency is negative" };
-            yield return new object[] { new FixedCost { Name = null!, Frequency = 0, Description = "Frequency 0" }, "Frequency is 0" };
+            var cost1 = CreateValidFixedCost();
+            cost1.Frequency = -5;
+            yield return new object[] { cost1, "Frequency is negative" };
+
+            var cost2 = CreateValidFixedCost();
+            cost2.Frequency = 0;
+            yield return new object[] { cost1, "Frequency is 0" };
         }
 
         public static IEnumerable<object[]> GetBoundaryInvalidData()
         {
-            yield return new object[] { new FixedCost { Name = new string('A', 51), Amount = 10 }, "Name exceeds 50 chars" };
-            yield return new object[] { new FixedCost { Name = "Test", Amount = 10, Frequency = 366 }, "Frequency exceeds 365 days" };
+            var cost1 = CreateValidFixedCost();
+            cost1.Name = new string('A', 51);
+            yield return new object[] { cost1, "Name exceeds 50 chars" };
+
+            var cost2 = CreateValidFixedCost();
+            cost2.Frequency = 366;
+            yield return new object[] { cost1, "Frequency exceeds 365 days" };
+        }
+
+        public static IEnumerable<object[]> GetIdsZero()
+        {
+            var cost1 = CreateValidFixedCost();
+            cost1.Id = 0;
+            var id1 = 0;
+            yield return new object[] { cost1, id1, "Both ids are 0" };
+        }
+
+        public static IEnumerable<object[]> GetDiferentIds()
+        {
+            var cost1 = CreateValidFixedCost();
+            cost1.Id = 12;
+            var id1 = 34;
+            yield return new object[] { cost1, id1, "Both ids are diferent" };
+        }
+
+        public static IEnumerable<object[]> GetZeroOrNegativeIds()
+        {
+            yield return new object[] { 0, "Id cannot be 0" };
+            yield return new object[] { -1, "Id cannot be below 0" };
         }
 
         public FixedCostControllerTest(WebApplicationFactory<Program> factory)
@@ -68,6 +126,57 @@ namespace my_economy_api_test.IntegrationTests
             var response = await client.GetAsync("/FixedCost");
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
+        }
+
+        /// <summary>
+        /// Verifies that the GetFixedsCost API returns a BadRequest response when the provided ID is zero or negative.
+        /// </summary>
+        /// <remarks>This test ensures that the API does not attempt to access the repository when an
+        /// invalid ID is provided, and that it responds with the appropriate HTTP status code.</remarks>
+        /// <param name="id">The fixed cost identifier to test. Must be zero or a negative integer to trigger the BadRequest response.</param>
+        /// <param name="reason">A description of the test case or the reason for using the specified ID value.</param>
+        /// <returns>A task that represents the asynchronous test operation.</returns>
+        [Theory]
+        [MemberData(nameof(GetZeroOrNegativeIds))]
+        public async Task GetFixedsCost_ReturnsBadRequest_WhenIdIsZeroOrBelow(int id, string reason)
+        {
+            var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
+
+            var client = _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
+            }).CreateClient(); //Create an HTTP client for testing the API, using the WebApplicationFactory to set up the test server and injecting the mocked DbProvider into the service collection.
+
+            var response = await client.GetAsync($"/FixedCost/{id}");
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}"); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
+
+            await mockDb.DidNotReceive().GetByIdAsync(Arg.Any<int>()); //Verify that the GetByIdAsync method was not called on the mock repository, as the request should have been rejected before reaching that point.
+        }
+
+        /// <summary>
+        /// Verifies that the DeleteFixedCost API returns a BadRequest response when called with an ID that is zero or
+        /// negative.
+        /// </summary>
+        /// <remarks>This test ensures that the API correctly rejects invalid IDs by returning a
+        /// BadRequest status and does not attempt to delete any records from the repository.</remarks>
+        /// <param name="id">The fixed cost identifier to delete. Must be zero or a negative value to trigger the BadRequest response.</param>
+        /// <param name="reason">A description of the test case or rationale for using the specified ID value.</param>
+        /// <returns>A task that represents the asynchronous test operation.</returns>
+        [Theory]
+        [MemberData(nameof(GetZeroOrNegativeIds))]
+        public async Task DeleteFixedsCost_ReturnsBadRequest_WhenIdIsZeroOrBelow(int id, string reason)
+        {
+            var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
+
+            var client = _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
+            }).CreateClient(); //Create an HTTP client for testing the API, using the WebApplicationFactory to set up the test server and injecting the mocked DbProvider into the service collection.
+
+            var response = await client.DeleteAsync($"/FixedCost/{id}");
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}"); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
+
+            mockDb.DidNotReceive().Delete(Arg.Any<FixedCost>()); //Verify that the GetByIdAsync method was not called on the mock repository, as the request should have been rejected before reaching that point.
         }
 
         /// <summary>
@@ -101,6 +210,56 @@ namespace my_economy_api_test.IntegrationTests
         }
 
         /// <summary>
+        /// Verifies that posting a FixedCost with a non-zero Id returns a BadRequest response.
+        /// </summary>
+        /// <remarks>This test ensures that the API enforces the requirement that the Id property must be
+        /// zero when creating a new FixedCost. If the Id is not zero, the API should respond with a BadRequest status
+        /// code.</remarks>
+        /// <returns>A task representing the asynchronous test operation.</returns>
+         
+        [Fact]
+        public async Task PostFixedCost_ReturnsBadRequest_WhenIdIsNotZero()
+        {
+            // Arrange
+            var invalidCost = new FixedCost { Id = 1, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
+            var mockDb = Substitute.For<IRepository<FixedCost>>();
+
+            var client = _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
+            }).CreateClient();
+
+            // Act
+            var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>()); //Verify that the AddAsync method was not called on the mock repository, as the request should have been rejected before reaching that point.
+        }
+
+        [Fact]
+        public async Task PutFixedCost_ReturnsBadRequest_WhenIdsAreZero()
+        {
+            // Arrange
+            var invalidCost = new FixedCost { Id = 0, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
+            var invalidId = 0; // The ID in the query string is zero, which is invalid for an update operation
+            var mockDb = Substitute.For<IRepository<FixedCost>>();
+
+            var client = _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
+            }).CreateClient();
+
+            // Act
+            var response = await client.PutAsJsonAsync($"/FixedCost/{invalidId}", invalidCost);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            // Verify that the Update method was not called on the mock repository, as the request should have been rejected before reaching that point.
+            mockDb.DidNotReceive().Update(Arg.Any<FixedCost>());
+        }
+
+        /// <summary>
         /// Verifies that posting a fixed cost with missing mandatory parameters returns a BadRequest response.
         /// </summary>
         /// <remarks>This test uses parameterized input to ensure the API consistently rejects requests
@@ -125,6 +284,8 @@ namespace my_economy_api_test.IntegrationTests
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}");
+             
+            await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>());
         }
 
       /// <summary>
@@ -152,6 +313,8 @@ namespace my_economy_api_test.IntegrationTests
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}");
+
+            await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>());
         }
 
         /// <summary>
@@ -178,6 +341,8 @@ namespace my_economy_api_test.IntegrationTests
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}");
+
+            await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>());
         }
     }
 }

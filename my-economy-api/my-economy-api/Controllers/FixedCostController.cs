@@ -18,7 +18,7 @@ namespace my_economy_api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> GetAll()
         {
             var fixedCost = await _fixedCostRepository.GetAllAsync();
 
@@ -29,10 +29,28 @@ namespace my_economy_api.Controllers
         }
 
         [HttpPost]
-        public IActionResult Post(FixedCost entity)
+        public async Task<IActionResult> Post([FromBody] FixedCost entity)
         {
-            _fixedCostRepository.AddAsync(entity);
+            if(entity.Id > 0) return BadRequest("El Id debe ser 0 para crear un nuevo registro.");
+
+            await _fixedCostRepository.AddAsync(entity);
             return CreatedAtAction(nameof(Post), new { id = entity.Id }, entity);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] FixedCost entity)
+        {
+            // Esta es la validación clave
+            if (id != entity.Id)
+            {
+                return BadRequest("El ID de la URL no coincide con el ID del objeto enviado.");
+            }
+
+            if(id == 0 || entity.Id == 0) return BadRequest("El ID no puede ser 0 en ninguno de los casos");
+            _fixedCostRepository.Update(entity);
+            return null;
+
+            // ... lógica para actualizar ...
         }
 
         //[HttpPost]
