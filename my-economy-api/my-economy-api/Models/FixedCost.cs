@@ -9,6 +9,9 @@ namespace my_economy_api.Models
         [Key]
         public int Id { get; set; }
 
+        [Required]
+        public string UserId { get; set; } = string.Empty; // El ID que viene de Supabase Auth
+
         [Range(1, int.MaxValue, ErrorMessage = "CategoryID must be greater than 0")]
         public int CategoryID { get; set; }
 

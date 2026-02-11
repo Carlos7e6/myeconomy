@@ -1,9 +1,11 @@
 using FluentAssertions; // For more readable and expressive assertions in tests, FluentAssertions allows you to write assertions in a way that closely resembles natural language, improving the clarity and maintainability of your test code.
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection; //To use AddScoped in the test setup, also other types of injection if needed
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using my_economy_api;
 using my_economy_api.Models;
+using my_economy_api.Services.Interfaces;
 using NSubstitute; // For mocking dependencies in tests, mocking is essential to isolate the unit of work being tested and to control the behavior of dependencies, ensuring that tests are reliable and focused on the specific functionality being evaluated.
 using RepositoryPatern.Interfaces;
 using System.Net;
@@ -22,24 +24,66 @@ namespace my_economy_api_test.IntegrationTests
             {
                 Id = 0,
                 Name = "Gasto Válido",
-                Amount = 100.0f,
+                Amount = 100.0M,
                 Frequency = 30,
                 CategoryID = 1,
-                Description = "Descripción estándar"
+                Description = "Descripción estándar",
+                UserId = "TEST-USER"
             };
         }
+
         /// <summary>
-        /// Creates an HttpClient instance configured to use the specified mock repository for FixedCost operations.
+        /// Creates an authenticated test HTTP client configured with a mock repository for use in integration tests.
         /// </summary>
-        /// <remarks>Use this method to obtain an HttpClient for integration testing scenarios where
-        /// FixedCost repository behavior needs to be controlled or verified.</remarks>
-        /// <param name="mock">The mock implementation of IRepository<FixedCost> to be injected into the test server's service collection.</param>
-        /// <returns>An HttpClient instance that communicates with a test server using the provided mock repository.</returns>
-        private HttpClient GetClientWithMock(IRepository<FixedCost> mock)
+        /// <remarks>The returned client uses a test authentication scheme to simulate an authenticated user,
+        /// allowing access to endpoints that require authentication. The mock repository is registered as a scoped
+        /// dependency, enabling controlled test scenarios for FixedCost data access.</remarks>
+        /// <param name="mock">The mock implementation of the repository for FixedCost entities. Used to override the repository dependency
+        /// in the test client.</param>
+        /// <returns>An authenticated HttpClient instance with the mock repository injected. The client can be used to send
+        /// requests to the test server with authentication enabled.</returns>
+        private HttpClient GetClientWithMock(IRepository<FixedCost> repoMock)
         {
-            return _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mock));
-            }).CreateClient();
+            // Creamos un mock de auth que siempre funcione para no romper los tests viejos
+            var defaultAuthMock = Substitute.For<IAuthService>();
+            defaultAuthMock.GetUserIdAsync(Arg.Any<string>()).Returns(Task.FromResult<string?>("1"));
+
+            return GetClientWithSpecificAuth(repoMock, defaultAuthMock);
+        }
+
+        /// <summary>
+        /// Creates an HttpClient instance configured with the specified repository and authentication service mocks for
+        /// integration testing.
+        /// </summary>
+        /// <remarks>This method is intended for use in integration tests where specific service
+        /// implementations need to be injected and authentication must be bypassed or controlled. The returned
+        /// HttpClient is configured to use a test authentication scheme, allowing requests to endpoints protected by
+        /// authorization attributes without requiring real authentication.</remarks>
+        /// <param name="repoMock">The repository mock to be injected into the test server's dependency injection container. Used to simulate
+        /// data access for FixedCost entities during tests.</param>
+        /// <param name="authMock">The authentication service mock to be injected into the test server's dependency injection container. Used
+        /// to simulate authentication and authorization behavior during tests.</param>
+        /// <returns>An HttpClient instance configured to use the provided mocks and a test authentication scheme. The client
+        /// does not automatically follow redirects.</returns>
+        private HttpClient GetClientWithSpecificAuth(IRepository<FixedCost> repoMock, IAuthService authMock)
+        {
+            return _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    // 1. Inyectamos los Mocks específicos que hemos configurado en el test
+                    services.AddScoped(_ => repoMock);
+                    services.AddScoped(_ => authMock);
+
+                    // 2. Configuramos el sistema de autenticación de prueba
+                    // Esto es necesario para que el atributo [Authorize] no bloquee la petición
+                    services.AddAuthentication("TestScheme")
+                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", options => { });
+                });
+            }).CreateClient(new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false
+            });
         }
 
         public static IEnumerable<object[]> GetMandatoryParameterNull()
@@ -139,6 +183,16 @@ namespace my_economy_api_test.IntegrationTests
             response.StatusCode.Should().Be(HttpStatusCode.NotFound); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
         }
 
+        [Fact]
+        public async Task GetFixedsCost_ReturnsUnauthorized_WhenNoTokenSended()
+        {
+            var client = _factory.CreateClient();
+
+            var response = await client.GetAsync("/FixedCost");
+
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized, "because the controller is protected with [Authorize]"); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
+        }
+
         /// <summary>
         /// Verifies that the GetFixedsCost API returns a BadRequest response when the provided ID is zero or negative.
         /// </summary>
@@ -196,7 +250,7 @@ namespace my_economy_api_test.IntegrationTests
         public async Task PostFixedCost_ReturnsCreated_WhenDataIsValid()
         {
             // Arrange
-            var validCost = new FixedCost { Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
+            var validCost = new FixedCost { Name = "Netflix", Amount = 15.99M, Frequency = 30, CategoryID = 1, UserId = "TEST-123" };
             var mockDb = Substitute.For<IRepository<FixedCost>>();
             // Set up the mock to simulate successful addition of the fixed cost to the database.
             // When the AddAsync method is called with any FixedCost object, it will return a completed task,
@@ -225,7 +279,7 @@ namespace my_economy_api_test.IntegrationTests
         public async Task PostFixedCost_ReturnsBadRequest_WhenIdIsNotZero()
         {
             // Arrange
-            var invalidCost = new FixedCost { Id = 1, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
+            var invalidCost = new FixedCost { Id = 1, Name = "Netflix", Amount = 15.99M, Frequency = 30, CategoryID = 1 };
             var mockDb = Substitute.For<IRepository<FixedCost>>();
 
             var client = GetClientWithMock(mockDb);
@@ -250,7 +304,7 @@ namespace my_economy_api_test.IntegrationTests
         public async Task PutFixedCost_ReturnsBadRequest_WhenIdAreZero()
         {
             // Arrange
-            var invalidCost = new FixedCost { Id = 0, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
+            var invalidCost = new FixedCost { Id = 0, Name = "Netflix", Amount = 15.99M, Frequency = 30, CategoryID = 1 };
             var invalidId = 0; // The ID in the query string is zero, which is invalid for an update operation
             var mockDb = Substitute.For<IRepository<FixedCost>>();
 
@@ -342,6 +396,37 @@ namespace my_economy_api_test.IntegrationTests
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}");
 
             await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>());
+        }
+
+        /// <summary>
+        /// Verifies that the GetFixedCost endpoint returns an Unauthorized response when the authentication service
+        /// indicates the provided token is invalid.
+        /// </summary>
+        /// <remarks>This test simulates an authentication scenario where the token is present but not
+        /// recognized as valid by the authentication service. It ensures that the API correctly responds with HTTP 401
+        /// Unauthorized in such cases.</remarks>
+        /// <returns>A task that represents the asynchronous test operation.</returns>
+        [Fact]
+        public async Task GetFixedCost_ReturnsUnauthorized_WhenServiceSaysTokenIsInvalid()
+        {
+            // Arrange
+            var repoMock = Substitute.For<IRepository<FixedCost>>();
+            var authMock = Substitute.For<IAuthService>();
+
+            // Escenario: El servicio de auth devuelve NULL (token no válido)
+            authMock.GetUserIdAsync(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
+
+            var client = GetClientWithSpecificAuth(repoMock, authMock);
+
+            // IMPORTANTE: Añadir la cabecera para que pase el primer filtro del [Authorize]
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("TestScheme", "token-invalido");
+
+            // Act
+            var response = await client.GetAsync("/FixedCost");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
     }
 }

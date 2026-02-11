@@ -1,20 +1,26 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using my_economy_api.Models;
+using my_economy_api.Services.Interfaces;
 using RepositoryPatern;
 using RepositoryPatern.Interfaces;
 
 namespace my_economy_api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
     public class FixedCostController : ControllerBase
     {
         private readonly IRepository<FixedCost> _fixedCostRepository;
-        public FixedCostController(IRepository<FixedCost> fixedCostRepository)
+        private readonly IAuthService _authService;
+
+        public FixedCostController(IRepository<FixedCost> repository, IAuthService authService)
         {
-            _fixedCostRepository = fixedCostRepository;
+            _fixedCostRepository = repository;
+            _authService = authService;
         }
 
         [HttpGet]
@@ -26,6 +32,20 @@ namespace my_economy_api.Controllers
                 return NotFound(); 
 
             return Ok(fixedCost);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> Get(int id)
+        {
+            // Esta es la lógica que tu test está esperando:
+            if (id <= 0)
+            {
+                return BadRequest("Id cannot be zero or below");
+            }
+
+            // Por ahora devolvemos un Ok de mentira para que el compilador no llore
+            // En el siguiente paso del TDD buscaremos en el repositorio
+            return Ok();
         }
 
         [HttpPost]
@@ -51,6 +71,20 @@ namespace my_economy_api.Controllers
             return null;
 
             // ... lógica para actualizar ...
+        }
+
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            // Esta es la lógica que tu test está esperando:
+            if (id <= 0)
+            {
+                return BadRequest("Id cannot be zero or below");
+            }
+
+            // Por ahora devolvemos un Ok de mentira para que el compilador no llore
+            // En el siguiente paso del TDD buscaremos en el repositorio
+            return Ok();
         }
 
         //[HttpPost]

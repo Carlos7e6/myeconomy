@@ -8,6 +8,8 @@ namespace my_economy_api.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<FixedCost> FixedCosts { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<BudgetCategory> BudgetCategories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
