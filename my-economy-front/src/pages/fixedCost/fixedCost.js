@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./fixedCost.css";
 
-const FixedCost = () => {
+const FixedCost = ({ session }) => {
   const [fixedCosts, setFixedCosts] = useState([]); // Estado para almacenar los datos
   const [loading, setLoading] = useState(true); // Estado para manejar el estado de carga
   const [error, setError] = useState(null); // Estado para manejar errores
@@ -19,6 +19,7 @@ const FixedCost = () => {
   };
 
   const sendNewFixedCost = async () => {
+    
     try {
       const response = await fetch(
         "https://localhost:7254/Economy/SaveFixedCost",
@@ -26,6 +27,7 @@ const FixedCost = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            'Authorization': `Bearer ${session?.access_token}`
           },
           body: JSON.stringify(newFixedCost),
         }
@@ -43,11 +45,15 @@ const FixedCost = () => {
   };
 
   const fetchFixedCosts = async () => {
+    console.log("Mi JWT Token es:", session?.access_token);
     try {
       const response = await fetch(
         "https://localhost:7254/FixedCost",
         {
           method: "GET",
+          headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            },
         }
       );
 

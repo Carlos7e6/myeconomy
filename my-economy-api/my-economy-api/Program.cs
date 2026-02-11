@@ -10,6 +10,18 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var supabaseUrl = builder.Configuration["Supabase:Url"]
+    ?? throw new InvalidOperationException("Supabase URL is missing.");
+
+var supabaseUrlTrim = supabaseUrl.TrimEnd('/');
+var jwksUrl = $"{supabaseUrlTrim}/auth/v1/.well-known/jwks.json";
+
+// Descargamos las llaves de forma asíncrona pero bloqueante solo al arrancar
+using var httpClient = new HttpClient();
+var jwksJson = httpClient.GetStringAsync(jwksUrl).GetAwaiter().GetResult();
+var jwks = new JsonWebKeySet(jwksJson);
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -25,8 +37,7 @@ builder.Services.AddScoped<DbContext>(provider =>
 
 // Retrieve the Supabase URL and key from the application's configuration settings and register a new instance of the Supabase client in the dependency injection container,
 // allowing it to be injected into other services and controllers that require access to Supabase for authentication and data operations.
-var supabaseUrl = builder.Configuration["Supabase:Url"]
-    ?? throw new InvalidOperationException("Supabase URL is missing.");
+
 var supabaseKey = builder.Configuration["Supabase:Key"]
     ?? throw new InvalidOperationException("Supabase Key is missing.");
 
@@ -48,28 +59,49 @@ builder.Services.AddCors(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var jwtSecret = builder.Configuration["Supabase:JwtSecret"]
-            ?? throw new InvalidOperationException("JWT Secret is missing.");
-        var supabaseUrl = builder.Configuration["Supabase:Url"]
-            ?? throw new InvalidOperationException("Supabase URL is missing.");
+        var supabaseUrl = builder.Configuration["Supabase:Url"]?.TrimEnd('/');
+        var authUrl = $"{supabaseUrl}/auth/v1";
 
-        var key = Encoding.ASCII.GetBytes(jwtSecret);
+        // 1. EL ESTÁNDAR PRO: .NET descarga solo las llaves y la config
+        options.Authority = authUrl;
+        options.RequireHttpsMetadata = true;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
+            // Aquí inyectamos las llaves que acabamos de descargar
+            IssuerSigningKeys = jwks.GetSigningKeys(),
 
             ValidateIssuer = true,
-            // Importante: Supabase espera este formato exacto para el Issuer
-            ValidIssuer = $"{supabaseUrl.TrimEnd('/')}/auth/v1",
+            ValidIssuer = $"{supabaseUrl}/auth/v1",
 
             ValidateAudience = true,
             ValidAudience = "authenticated",
 
             RequireExpirationTime = true,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // Opcional: elimina el margen de 5 min por defecto
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                // ESTO es oro puro. Mira la consola de Visual Studio/Dotnet al fallar.
+                Console.WriteLine("--- FALLO DE AUTENTICACIÓN ---");
+                Console.WriteLine("Mensaje: " + context.Exception.Message);
+
+                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                {
+                    Console.WriteLine("El token está expirado.");
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine("¡Token validado con éxito para el usuario: " + context.Principal.Identity.Name);
+                return Task.CompletedTask;
+            }
         };
     });
 
