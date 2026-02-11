@@ -20,12 +20,12 @@ namespace my_economy_api.Models
         public string? Description { get; set; }
 
         [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be > 0")]
-        public float Amount { get; set; }
+        public decimal Amount { get; set; }
 
         [Range(1, 365, ErrorMessage = "Frequency must be at least 1 day")]
         public int Frequency { get; set; }
         public DateTime AproxDatePayment { get; set; }
-        public DateTime? CreatedAt { get; set; }
+        public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
     }
 }

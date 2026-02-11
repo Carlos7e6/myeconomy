@@ -45,7 +45,7 @@ const FixedCost = () => {
   const fetchFixedCosts = async () => {
     try {
       const response = await fetch(
-        "https://localhost:7254/FixedCosts",
+        "https://localhost:7254/FixedCost",
         {
           method: "GET",
         }

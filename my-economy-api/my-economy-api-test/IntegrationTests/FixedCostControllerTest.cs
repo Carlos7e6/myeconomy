@@ -28,6 +28,19 @@ namespace my_economy_api_test.IntegrationTests
                 Description = "Descripción estándar"
             };
         }
+        /// <summary>
+        /// Creates an HttpClient instance configured to use the specified mock repository for FixedCost operations.
+        /// </summary>
+        /// <remarks>Use this method to obtain an HttpClient for integration testing scenarios where
+        /// FixedCost repository behavior needs to be controlled or verified.</remarks>
+        /// <param name="mock">The mock implementation of IRepository<FixedCost> to be injected into the test server's service collection.</param>
+        /// <returns>An HttpClient instance that communicates with a test server using the provided mock repository.</returns>
+        private HttpClient GetClientWithMock(IRepository<FixedCost> mock)
+        {
+            return _factory.WithWebHostBuilder(builder => {
+                builder.ConfigureServices(services => services.AddScoped(_ => mock));
+            }).CreateClient();
+        }
 
         public static IEnumerable<object[]> GetMandatoryParameterNull()
         {
@@ -119,9 +132,7 @@ namespace my_economy_api_test.IntegrationTests
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
             mockDb.GetAllAsync().Returns(new List<FixedCost>());
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient(); //Create an HTTP client for testing the API, using the WebApplicationFactory to set up the test server and injecting the mocked DbProvider into the service collection.
+            var client = GetClientWithMock(mockDb);
 
             var response = await client.GetAsync("/FixedCost");
 
@@ -142,10 +153,7 @@ namespace my_economy_api_test.IntegrationTests
         {
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient(); //Create an HTTP client for testing the API, using the WebApplicationFactory to set up the test server and injecting the mocked DbProvider into the service collection.
-
+            var client = GetClientWithMock(mockDb);
             var response = await client.GetAsync($"/FixedCost/{id}");
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"Reason: {reason}"); //Assert that the response status code is NotFound (404), which is the expected outcome when there are no fixed costs available in the database.
@@ -168,9 +176,7 @@ namespace my_economy_api_test.IntegrationTests
         {
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient(); //Create an HTTP client for testing the API, using the WebApplicationFactory to set up the test server and injecting the mocked DbProvider into the service collection.
+            var client = GetClientWithMock(mockDb);
 
             var response = await client.DeleteAsync($"/FixedCost/{id}");
 
@@ -198,9 +204,7 @@ namespace my_economy_api_test.IntegrationTests
 
             mockDb.AddAsync(Arg.Any<FixedCost>()).Returns(Task.CompletedTask);
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PostAsJsonAsync("/FixedCost", validCost);
@@ -224,9 +228,7 @@ namespace my_economy_api_test.IntegrationTests
             var invalidCost = new FixedCost { Id = 1, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
             var mockDb = Substitute.For<IRepository<FixedCost>>();
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);
@@ -237,17 +239,22 @@ namespace my_economy_api_test.IntegrationTests
             await mockDb.DidNotReceive().AddAsync(Arg.Any<FixedCost>()); //Verify that the AddAsync method was not called on the mock repository, as the request should have been rejected before reaching that point.
         }
 
+        /// <summary>
+        /// Verifies that the PutFixedCost endpoint returns a BadRequest response when both the route ID and the
+        /// FixedCost object's ID are zero.
+        /// </summary>
+        /// <remarks>This test ensures that the API correctly rejects update requests with invalid IDs and
+        /// does not attempt to update the repository when the IDs are zero.</remarks>
+        /// <returns>A task that represents the asynchronous test operation.</returns>
         [Fact]
-        public async Task PutFixedCost_ReturnsBadRequest_WhenIdsAreZero()
+        public async Task PutFixedCost_ReturnsBadRequest_WhenIdAreZero()
         {
             // Arrange
             var invalidCost = new FixedCost { Id = 0, Name = "Netflix", Amount = 15.99f, Frequency = 30, CategoryID = 1 };
             var invalidId = 0; // The ID in the query string is zero, which is invalid for an update operation
             var mockDb = Substitute.For<IRepository<FixedCost>>();
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PutAsJsonAsync($"/FixedCost/{invalidId}", invalidCost);
@@ -274,10 +281,8 @@ namespace my_economy_api_test.IntegrationTests
         public async Task PostFixedCost_ReturnsBadRequest_WhenMandatoryParameterIsMissing(FixedCost invalidCost, string reason)
         {
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
-            
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);
@@ -299,14 +304,11 @@ namespace my_economy_api_test.IntegrationTests
       /// <returns>A task representing the asynchronous test operation.</returns>
         [Theory]
         [MemberData(nameof(GetAmountBelowZero))]
-
         public async Task PostFixedCost_ReturnsBadRequest_WhenAmountValueUnderZero(FixedCost invalidCost, string reason)
         {
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);
@@ -327,14 +329,11 @@ namespace my_economy_api_test.IntegrationTests
         /// <returns>A task representing the asynchronous test operation.</returns>
         [Theory]
         [MemberData(nameof(GetBoundaryInvalidData))]
-
         public async Task PostFixedCost_ReturnsBadRequest_WhenBoundaryInvalidData(FixedCost invalidCost, string reason)
         {
             var mockDb = Substitute.For<IRepository<FixedCost>>(); //Create a mock instance of the IDbProvider class using NSubstitute
 
-            var client = _factory.WithWebHostBuilder(builder => {
-                builder.ConfigureServices(services => services.AddScoped(_ => mockDb));
-            }).CreateClient();
+            var client = GetClientWithMock(mockDb);
 
             // Act
             var response = await client.PostAsJsonAsync("/FixedCost", invalidCost);

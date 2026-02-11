@@ -12,7 +12,7 @@ builder.Services.AddSwaggerGen();
 // Register the DbContext with the dependency injection container, configuring it to use SQL Server with the connection string specified in the application's configuration settings.
 // This allows the application to interact with the database using Entity Framework Core for data access operations.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register the DbContext as a scoped service in the dependency injection container, allowing it to be injected into other services and controllers that require database access.
 builder.Services.AddScoped<DbContext>(provider =>
